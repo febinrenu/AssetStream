@@ -1,0 +1,19 @@
+Django>=5.1,<5.2
+djangorestframework>=3.15,<4.0
+djangorestframework-simplejwt>=5.3,<6.0
+django-cors-headers>=4.4,<5.0
+django-filter>=24.0
+drf-spectacular>=0.27,<1.0
+celery>=5.4,<6.0
+django-celery-beat>=2.6,<3.0
+redis>=5.0,<6.0
+psycopg2-binary>=2.9,<3.0
+gunicorn>=22.0,<23.0
+scikit-learn>=1.5,<2.0
+joblib>=1.4,<2.0
+numpy>=1.26,<2.0
+# Feature additions
+pdfminer.six>=20221105
+requests>=2.31,<3.0
+python-dateutil>=2.9
+groq>=0.9,<1.0

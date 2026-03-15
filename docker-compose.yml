@@ -1,0 +1,141 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: assetstream
+      POSTGRES_USER: assetstream
+      POSTGRES_PASSWORD: assetstream_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U assetstream"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py makemigrations --noinput &&
+             python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn assetstream.wsgi:application --bind 0.0.0.0:8000 --workers 4"
+    environment:
+      DEBUG: "True"
+      SECRET_KEY: django-insecure-assetstream-dev-key-change-in-production-2024
+      POSTGRES_DB: assetstream
+      POSTGRES_USER: assetstream
+      POSTGRES_PASSWORD: assetstream_secret
+      DB_HOST: db
+      DB_PORT: "5432"
+      DATABASE_URL: postgres://assetstream:assetstream_secret@db:5432/assetstream
+      REDIS_URL: redis://redis:6379/0
+      ALLOWED_HOSTS: "*"
+      CORS_ALLOWED_ORIGINS: "http://localhost,http://localhost:3000,http://127.0.0.1"
+      JWT_ACCESS_TOKEN_LIFETIME_MINUTES: "60"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A assetstream worker -l info -Q default
+    environment:
+      DEBUG: "True"
+      SECRET_KEY: django-insecure-assetstream-dev-key-change-in-production-2024
+      POSTGRES_DB: assetstream
+      POSTGRES_USER: assetstream
+      POSTGRES_PASSWORD: assetstream_secret
+      DB_HOST: db
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      ALLOWED_HOSTS: "*"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A assetstream beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      DEBUG: "True"
+      SECRET_KEY: django-insecure-assetstream-dev-key-change-in-production-2024
+      POSTGRES_DB: assetstream
+      POSTGRES_USER: assetstream
+      POSTGRES_PASSWORD: assetstream_secret
+      DB_HOST: db
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      ALLOWED_HOSTS: "*"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost/api
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      - api
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - web
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
