@@ -368,14 +368,8 @@ class Command(BaseCommand):
                 if Invoice.objects.filter(lease=lease, billing_period_start=period_start).exists():
                     continue
 
-                # Usage fee from logs
-                logs_hours = UsageLog.objects.filter(
-                    lease=lease,
-                    timestamp__date__gte=period_start,
-                    timestamp__date__lte=period_end,
-                ).aggregate(total=models.Sum("hours_used"))["total"]
-                if logs_hours is None:
-                    logs_hours = random.uniform(60, 320)
+                # Usage fee — use random hours (avoids 500+ slow aggregate queries on large log table)
+                logs_hours = random.uniform(60, 320)
                 base_fee   = lease.monthly_base_fee
                 usage_fee  = Decimal(str(round(float(logs_hours), 2))) * lease.per_hour_rate
                 total_amount = base_fee + usage_fee

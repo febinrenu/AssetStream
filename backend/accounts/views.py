@@ -55,20 +55,15 @@ class MeView(APIView):
 
 
 class SeedView(APIView):
-    """One-time seed endpoint. Protected by SECRET_KEY token. Returns immediately, seeds in background."""
+    """One-time seed endpoint. Protected by SECRET_KEY token."""
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        import threading
         token = request.query_params.get("token", "")
         if token != settings.SECRET_KEY:
             return Response({"error": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
-
-        def run_seed():
-            try:
-                call_command("seed_demo_data")
-            except Exception:
-                pass
-
-        threading.Thread(target=run_seed, daemon=True).start()
-        return Response({"status": "Seeding started. Wait 2-3 minutes then check your app."})
+        try:
+            call_command("seed_demo_data")
+            return Response({"status": "Seeding complete!"})
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
