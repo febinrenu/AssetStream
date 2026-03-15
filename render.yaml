@@ -20,6 +20,7 @@ services:
     name: assetstream-api
     runtime: docker
     dockerfilePath: backend/Dockerfile
+    dockerContext: backend
     dockerCommand: bash start.sh
     plan: free
     envVars:
@@ -66,6 +67,7 @@ services:
     name: assetstream-frontend
     runtime: docker
     dockerfilePath: frontend/Dockerfile
+    dockerContext: frontend
     plan: free
     envVars:
       - key: PORT
