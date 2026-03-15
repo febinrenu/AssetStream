@@ -27,6 +27,9 @@ CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 
+# Supabase / production DB requires SSL
+DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}  # type: ignore[index]
+
 # Throttle down anon requests more aggressively in prod
 REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["anon"] = "60/hour"  # type: ignore[index]
 

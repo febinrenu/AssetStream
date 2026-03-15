@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
+set -o pipefail
 
 echo "==> Running migrations..."
 python manage.py migrate --noinput
