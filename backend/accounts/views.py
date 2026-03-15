@@ -59,11 +59,16 @@ class SeedView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
+        import threading
         token = request.query_params.get("token", "")
         if token != settings.SECRET_KEY:
             return Response({"error": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
-        try:
-            call_command("seed_demo_data")
-            return Response({"status": "Seeding complete!"})
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        def run():
+            try:
+                call_command("seed_demo_data")
+            except Exception:
+                pass
+
+        threading.Thread(target=run, daemon=False).start()
+        return Response({"status": "Seeding started. Check Supabase in 3 minutes."})
