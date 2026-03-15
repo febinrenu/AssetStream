@@ -1,4 +1,6 @@
 from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.core.management import call_command
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -50,3 +52,18 @@ class MeView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class SeedView(APIView):
+    """One-time seed endpoint. Protected by SECRET_KEY token."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        token = request.query_params.get("token", "")
+        if token != settings.SECRET_KEY:
+            return Response({"error": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            call_command("seed_demo_data")
+            return Response({"status": "Seeding complete. Check your database."})
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
